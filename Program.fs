@@ -33,6 +33,7 @@ let main argv =
         |> Result.bind(write <| ItemAddedToCart (cartData myCartId uglyHat))
         |> Result.bind(write <| ItemRemovedFromCart (cartData myCartId fancyHat))
         |> Result.bind(write <| CheckedOut myCartId)
+        |> Result.bind(write <| ShippedOrder myCartId)
 
     match state with
     | Ok s -> 

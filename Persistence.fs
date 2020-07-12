@@ -76,3 +76,12 @@ module Cart =
         WHERE Id = @CartId
       """
       {| CartId = cartId; Status = CartStatus.CheckedOut |}
+
+  let shipped (cartId: int) conn =
+    conn |> Db.queryP
+      """
+        UPDATE Cart
+        SET Status = @Status
+        WHERE Id = @CartId
+      """
+      {| CartId = cartId; Status = CartStatus.Shipped |}

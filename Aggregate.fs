@@ -27,6 +27,11 @@ let persist event conn =
     | Ok _ -> Ok (sprintf "Checked out %A" cartId)
     | Error e -> Error (sprintf "Checkout Error: %A" e)
 
+  | ShippedOrder cartId -> 
+    match Cart.shipped cartId conn with
+    | Ok _ -> Ok (sprintf "Shipped %A" cartId)
+    | Error e -> Error (sprintf "Shipping Error: %A" e)
+
 // Read initial DB state -> Hydrate
 let hydrate (id: int) conn = 
   Cart.loadCart id conn
