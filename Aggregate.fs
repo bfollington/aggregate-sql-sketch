@@ -9,22 +9,22 @@ let persist event conn =
   match event with
   | CartCreated cartId -> 
     match Cart.create cartId conn with
-    | Ok id -> Ok (sprintf "Cart ID: %A" id)
+    | Ok _ -> Ok (sprintf "Cart Created: %A" cartId)
     | Error e -> Error (sprintf "Could create cart: %A" e)
 
   | ItemAddedToCart item -> 
     match Cart.addItemToCart item.CartId item.Data.Sku conn with
-    | Ok items -> Ok (sprintf "Cart contains: %A" items)
+    | Ok _ -> Ok (sprintf "Added %A to cart %A" item.Data.Sku item.CartId)
     | Error e -> Error (sprintf "Item Add Error: %A" e)
 
   | ItemRemovedFromCart item -> 
     match Cart.removeItemFromCart item.CartId item.Data.Sku conn with
-    | Ok items -> Ok (sprintf "Cart contains: %A" items)
+    | Ok _ -> Ok (sprintf "Removed %A from cart: %A" item.Data.Sku item.CartId)
     | Error e -> Error (sprintf "Item Remove Error: %A" e)
     
   | CheckedOut cartId -> 
     match Cart.checkout cartId conn with
-    | Ok status -> Ok (sprintf "Cart is: %A" status)
+    | Ok _ -> Ok (sprintf "Checked out %A" cartId)
     | Error e -> Error (sprintf "Checkout Error: %A" e)
 
 // Read initial DB state -> Hydrate
