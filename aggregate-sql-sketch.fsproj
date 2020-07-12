@@ -11,6 +11,7 @@
     <Compile Include="Db.fs" />
     <Compile Include="Persistence.fs" />
     <Compile Include="Aggregate.fs" />
+    <Compile Include="Commands.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

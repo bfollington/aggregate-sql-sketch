@@ -1,26 +1,26 @@
 namespace Sketch.Persistence
 
-open Sketch.Events
+open Sketch.Events.Cart
 open Sketch
 
 [<RequireQualifiedAccess>]
 module Cart = 
   [<CLIMutable>]
   type CartRecord = { Id: int; Status: CartStatus }
-  [<CLIMutable>]
-  type CartProductRecord = { Sku: string; Name: string; Price: decimal }
 
   let loadCart id conn = 
     let cart = 
-      conn |> Db.queryFirstP<CartRecord>
-        """
-          SELECT Id, Status FROM Cart
-          WHERE Id = @CartId
-        """
-        {| CartId = id |}
+        Db.queryFirstP<CartRecord> 
+          conn
+          """
+            SELECT Id, Status FROM Cart
+            WHERE Id = @CartId
+          """
+          {| CartId = id |}
     
     let items =
-      conn |> Db.queryP<Product>
+      Db.queryP<Product>
+        conn
         """
           SELECT p.Sku, p.Name, p.Price FROM CartProduct
           JOIN Product as p On p.Sku = CartProduct.Sku
@@ -36,20 +36,19 @@ module Cart =
 
 
   let create (id: int) conn = 
-    match id with
-    | -1 -> Error "DB: Invalid Id provided"
-    | id -> 
-      conn |> Db.queryP 
-        """
-          INSERT INTO Cart 
-              (Id, Status)
-          VALUES 
-              (@Id, @Status)
-        """
-        {| Id = id; Status = CartStatus.Pending |}
+    Db.queryP 
+      conn
+      """
+        INSERT INTO Cart 
+            (Id, Status)
+        VALUES 
+            (@Id, @Status)
+      """
+      {| Id = id; Status = CartStatus.Ready |}
 
   let addItemToCart (cartId: int) (productSku: string) conn =
-    conn |> Db.queryP
+    Db.queryP
+      conn
       """
         INSERT INTO CartProduct
             (CartId, Sku)
@@ -60,7 +59,8 @@ module Cart =
         
 
   let removeItemFromCart (cartId: int) (productSku: string) conn = 
-    conn |> Db.queryP
+    Db.queryP
+      conn
       """
         DELETE FROM CartProduct
         WHERE CartId = @CartId
@@ -69,7 +69,8 @@ module Cart =
       {| CartId = cartId; Sku = productSku |}
 
   let checkout (cartId: int) conn =
-    conn |> Db.queryP
+    Db.queryP
+      conn
       """
         UPDATE Cart
         SET Status = @Status
@@ -78,7 +79,8 @@ module Cart =
       {| CartId = cartId; Status = CartStatus.CheckedOut |}
 
   let shipped (cartId: int) conn =
-    conn |> Db.queryP
+    Db.queryP
+      conn
       """
         UPDATE Cart
         SET Status = @Status

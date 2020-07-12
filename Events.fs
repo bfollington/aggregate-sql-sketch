@@ -1,26 +1,23 @@
-module Sketch.Events
+namespace Sketch.Events
 
+module Cart = 
+  [<CLIMutable>]
+  type Product = { Sku: string; Name: string; Price: decimal }
+  type CartStatus = | Initial = 0 | Ready = 1 | CheckedOut = 2 | Shipped = 3
 
-[<CLIMutable>]
-type Product = { Sku: string; Name: string; Price: decimal }
+  type CustomerCart = 
+    {
+      Id: int
+      Items: Product list
+      Status: CartStatus
+    }
 
-type CartItem = { Product: Product; Quantity: int }
+  type CartData<'a> = { CartId: int; Data: 'a; }
+  let cartData id data = { CartId = id; Data = data; }
 
-type CartStatus = | Pending = 0 | CheckedOut = 1 | Shipped = 2
-
-type CustomerCart = 
-  {
-    Id: int
-    Items: Product list
-    Status: CartStatus
-  }
-
-type CartData<'a> = { CartId: int; Data: 'a; }
-let cartData id data = { CartId = id; Data = data; }
-
-type CustomerCartEvent =
-  | CartCreated of int
-  | ItemAddedToCart of CartData<Product>
-  | ItemRemovedFromCart of CartData<Product>
-  | CheckedOut of int
-  | ShippedOrder of int
+  type CustomerCartEvent =
+    | CartCreated of int
+    | ItemAddedToCart of CartData<Product>
+    | ItemRemovedFromCart of CartData<Product>
+    | CheckedOut of int
+    | ShippedOrder of int

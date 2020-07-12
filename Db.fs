@@ -12,26 +12,23 @@ module Connection =
 
     let mkOnDisk () = new SqliteConnection (mkOnDiskConnectionString "./example.db")
 
-let query<'Result> (query:string) (connection: SqliteConnection) =
-    try 
-        Ok <| connection.Query<'Result>(query)
-    with 
-    | e -> Error e.Message
+type DbError =
+| DbError of string
 
-let queryP<'Result> (query: string) (param: obj) (connection: SqliteConnection) =
+let trap (action : unit -> 'a) =
     try 
-        Ok <| connection.Query<'Result>(query, param)
-    with 
-    | e -> Error e.Message
+        Ok (action())
+    with
+    | e -> Error (DbError e.Message)
+
+let query<'Result> (connection: SqliteConnection) (query:string) =
+    trap (fun () -> connection.Query<'Result>(query))
+
+let queryP<'Result> (connection: SqliteConnection) (query: string) (param: obj) =
+    trap (fun () -> connection.Query<'Result>(query, param))
         
-let queryFirst<'Result> (query:string) (connection: SqliteConnection) =
-    try 
-        Ok <| connection.QueryFirst<'Result>(query)
-    with 
-    | e -> Error e.Message
+let queryFirst<'Result> (connection: SqliteConnection) (query:string) =
+    trap (fun () -> connection.QueryFirst<'Result>(query))
 
-let queryFirstP<'Result> (query:string) (param: obj) (connection: SqliteConnection) =
-    try 
-        Ok <| connection.QueryFirst<'Result>(query, param)
-    with 
-    | e -> Error e.Message
+let queryFirstP<'Result> (connection: SqliteConnection) (query:string) (param: obj) =
+    trap (fun () -> connection.QueryFirst<'Result>(query, param))
