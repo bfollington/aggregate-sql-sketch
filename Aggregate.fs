@@ -12,7 +12,7 @@ module Cart =
     | CartCreated cartId -> 
       match Cart.create cartId conn with
       | Ok _ -> Ok (sprintf "Cart Created: %A" cartId)
-      | Error e -> Error (sprintf "Could create cart: %A" e)
+      | Error e -> Error (sprintf "Could not create cart: %A" e)
 
     | ItemAddedToCart item -> 
       match Cart.addItemToCart item.CartId item.Data.Sku conn with

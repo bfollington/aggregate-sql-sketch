@@ -10,13 +10,13 @@ module Cart =
 
   let loadCart id conn = 
     let cart = 
-        Db.queryFirstP<CartRecord> 
-          conn
-          """
-            SELECT Id, Status FROM Cart
-            WHERE Id = @CartId
-          """
-          {| CartId = id |}
+      Db.queryFirstP<CartRecord> 
+        conn
+        """
+          SELECT Id, Status FROM Cart
+          WHERE Id = @CartId
+        """
+        {| CartId = id |}
     
     let items =
       Db.queryP<Product>

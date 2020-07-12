@@ -22,10 +22,10 @@ module Cart =
     Cart.persist ev conn
     |> function
     | Ok msg -> 
-        printfn "%s" msg
+        printfn "> %s" msg
         Ok <| Cart.hydrate state.Id conn
     | Error msg -> 
-        printfn "%s" msg
+        printfn "< %s" msg
         Error (HydrationError state)
 
   type Client (conn: SqliteConnection) =
