@@ -17,7 +17,6 @@ let main argv =
         |> function
         | Ok msg -> 
             printfn "%s" msg
-            // Ok <| apply ev state
             Ok <| hydrate state.Id conn
         | Error msg -> 
             printfn "%s" msg
