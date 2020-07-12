@@ -1,60 +1,37 @@
 module Sketch.Aggregate
 
+open Sketch.Events
 open Sketch.Persistence
 
-type Product = { Sku: string; Name: string; Price: decimal }
+let zero id = { Id = id; Items = []; Status = CartStatus.Pending }
 
-type CartItem = { Product: Product; Quantity: int }
-
-type CustomerCart = 
-  {
-    Id: string option
-    Items: CartItem list
-  }
-  with
-    static member OfDataRecord (r: Cart.CartRecord) = 
-      let cartContents (r: Cart.CartRecord) =
-        Cart.loadProducts r.CartItems
-        |> List.map (fun r -> { Product = { Sku = r.Sku; Name = r.Name; Price = r.Price; }; Quantity = 1; })
-
-      {
-        Id = Some r.Id
-        Items = r |> cartContents
-      }
-
-
-let zero = { Id = None; Items = [] }
-
-type CustomerCartEvent =
-  | CartCreated
-  | ItemAddedToCart of CartItem
-
-// CONSIDER: apply should be returning a result here, does that mean we need to split it up? 
-let apply event state =
+let persist event conn =
   match event with
-  | CartCreated -> { state with Id = Some "123" }
-  | ItemAddedToCart item -> 
-    // TODO: handle quantities
-    { state with Items = state.Items @ [item] }
-
-let persist event =
-  match event with
-  | CartCreated -> 
-    match Cart.create "123" with
+  | CartCreated cartId -> 
+    match Cart.create cartId conn with
     | Ok id -> Ok (sprintf "Cart ID: %A" id)
     | Error e -> Error (sprintf "Could create cart: %A" e)
+
   | ItemAddedToCart item -> 
-    // TODO: handle quantities
-    match Cart.addItemToCart "123" item.Product.Sku with
+    match Cart.addItemToCart item.CartId item.Data.Sku conn with
     | Ok items -> Ok (sprintf "Cart contains: %A" items)
     | Error e -> Error (sprintf "Item Add Error: %A" e)
 
+  | ItemRemovedFromCart item -> 
+    match Cart.removeItemFromCart item.CartId item.Data.Sku conn with
+    | Ok items -> Ok (sprintf "Cart contains: %A" items)
+    | Error e -> Error (sprintf "Item Remove Error: %A" e)
+    
+  | CheckedOut cartId -> 
+    match Cart.checkout cartId conn with
+    | Ok status -> Ok (sprintf "Cart is: %A" status)
+    | Error e -> Error (sprintf "Checkout Error: %A" e)
+
 // Read initial DB state -> Hydrate
-let hydrate id = 
-  Cart.loadCart id
-  |> Result.map CustomerCart.OfDataRecord
+let hydrate (id: int) conn = 
+  Cart.loadCart id conn
   |> function
   | Ok c -> c
   | Error e -> 
     printfn "Hydration error: %A, starting from zero" e
-    zero
+    zero id

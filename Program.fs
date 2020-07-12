@@ -1,36 +1,49 @@
-﻿// Learn more about F# at http://fsharp.org
-
-open System
-
+﻿open Sketch.Events
 open Sketch.Aggregate
+open Sketch.Db
 
 let fancyHat = { Sku = "123"; Name = "Fancy Hat"; Price = 999.0M }
 let uglyHat = { Sku = "456"; Name = "Ugly Hat"; Price = 1.0M }
 
 [<EntryPoint>]
 let main argv =
+    let conn = Connection.mkOnDisk()
+    
+    conn.Open()
+    let txn = conn.BeginTransaction()
+
     let write ev state =
-        persist ev
+        persist ev conn
         |> function
         | Ok msg -> 
             printfn "%s" msg
-            Ok <| apply ev state
+            // Ok <| apply ev state
+            Ok <| hydrate state.Id conn
         | Error msg -> 
             printfn "%s" msg
             Error <| state
 
+    let myCartId = 123
+
     let state = 
-        hydrate "123"
+        hydrate myCartId conn
         |> Ok
-        |> Result.bind(write CartCreated)
-        |> Result.bind(write (ItemAddedToCart { Product = fancyHat; Quantity = 1 }))
-        |> Result.bind(write (ItemAddedToCart { Product = uglyHat; Quantity = 1 }))
+        |> Result.bind(write <| CartCreated myCartId)
+        |> Result.bind(write <| ItemAddedToCart (cartData myCartId fancyHat))
+        |> Result.bind(write <| ItemAddedToCart (cartData myCartId uglyHat))
+        |> Result.bind(write <| ItemRemovedFromCart (cartData myCartId fancyHat))
+        |> Result.bind(write <| CheckedOut myCartId)
 
     match state with
-    | Ok s -> printfn "Ok, state = %A" s
-    | Error s -> printfn "Rejected, state = %A" s
+    | Ok s -> 
+        printfn "Ok, state = %A" s
+        txn.Commit()
+    | Error s -> 
+        printfn "Rejected, state = %A" s
+        txn.Rollback()
 
-    printfn "Loaded again, cart = %A" (hydrate "123").Items
+    printfn "Loaded again, cart = %A" (hydrate myCartId conn)
 
+    conn.Close()
     printfn "Bye!"
     0 // return an integer exit code

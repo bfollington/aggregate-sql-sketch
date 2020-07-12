@@ -1,49 +1,78 @@
 namespace Sketch.Persistence
 
+open Sketch.Events
+open Sketch
+
 [<RequireQualifiedAccess>]
 module Cart = 
-  type CartRecord = 
-    {
-      Id: string
-      CartItems: string list
-    }
+  [<CLIMutable>]
+  type CartRecord = { Id: int; Status: CartStatus }
+  [<CLIMutable>]
+  type CartProductRecord = { Sku: string; Name: string; Price: decimal }
 
-  type ProductRecord = { Sku: string; Name: string; Price: decimal }
+  let loadCart id conn = 
+    let cart = 
+      conn |> Db.queryFirstP<CartRecord>
+        """
+          SELECT Id, Status FROM Cart
+          WHERE Id = @CartId
+        """
+        {| CartId = id |}
+    
+    let items =
+      conn |> Db.queryP<Product>
+        """
+          SELECT p.Sku, p.Name, p.Price FROM CartProduct
+          JOIN Product as p On p.Sku = CartProduct.Sku
+          WHERE CartProduct.CartId = @CartId
+        """
+        {| CartId = id |}
 
-  let fancyHat = { Sku = "123"; Name = "Fancy Hat"; Price = 999.0M }
-  let uglyHat = { Sku = "456"; Name = "Ugly Hat"; Price = 1.0M }
-  let productsTable = 
-    Map.empty
-      .Add("123", fancyHat)
-      .Add("456", uglyHat)
-  
-  let mutable mutableFakeFb: CartRecord option = None
+    let mkCart (cart: CartRecord) (items: Product seq) =
+      { CustomerCart.Id = cart.Id; Items = items |> Seq.toList; Status = cart.Status }
 
-  let loadProducts (skuList: string list) =
-    skuList
-    |> List.map (fun sku -> Map.tryFind sku productsTable)
-    |> List.choose id
+    cart
+    |> Result.bind(fun c -> items |> Result.map(mkCart c))
 
-  let loadCart id = 
-    match mutableFakeFb with
-    | Some m -> 
-      printfn "Cart Loaded: %A" m
-      Ok m
-    | None -> Error "DB: Cart does not exist"
 
-  let create id = 
+  let create (id: int) conn = 
     match id with
-    | "" -> Error "DB: Invalid Id provided"
+    | -1 -> Error "DB: Invalid Id provided"
     | id -> 
-      mutableFakeFb <- Some { Id = id; CartItems = [] }
-      Ok id
+      conn |> Db.queryP 
+        """
+          INSERT INTO Cart 
+              (Id, Status)
+          VALUES 
+              (@Id, @Status)
+        """
+        {| Id = id; Status = CartStatus.Pending |}
 
-  let addItemToCart cartId productSku =
-    // Look up cartId, if cart doesn't exist then throw error
-    match mutableFakeFb with
-    | Some m -> 
-      // TODO: if product exists in productsTable
-      let draft = { m with CartItems = m.CartItems @ [productSku] }
-      mutableFakeFb <- Some draft
-      Ok draft.CartItems
-    | None -> Error "DB: Cart does not exist"
+  let addItemToCart (cartId: int) (productSku: string) conn =
+    conn |> Db.queryP
+      """
+        INSERT INTO CartProduct
+            (CartId, Sku)
+        VALUES 
+            (@CartId, @Sku)
+      """
+      {| CartId = cartId; Sku = productSku |}
+        
+
+  let removeItemFromCart (cartId: int) (productSku: string) conn = 
+    conn |> Db.queryP
+      """
+        DELETE FROM CartProduct
+        WHERE CartId = @CartId
+        AND Sku = @Sku
+      """
+      {| CartId = cartId; Sku = productSku |}
+
+  let checkout (cartId: int) conn =
+    conn |> Db.queryP
+      """
+        UPDATE Cart
+        SET Status = @Status
+        WHERE Id = @CartId
+      """
+      {| CartId = cartId; Status = CartStatus.CheckedOut |}
