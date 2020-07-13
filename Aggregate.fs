@@ -3,6 +3,13 @@ namespace Sketch.Aggregate
 open Sketch.Persistence
 open Sketch.Events.Cart
 
+[<AutoOpen>]
+module ErrorWrapper =
+    let formatResult onOk onError r : Result<string, string> =
+        match r with
+        | Ok _ -> onOk |> Ok
+        | Error e -> sprintf "%s: %A" onError e |> Error
+
 [<RequireQualifiedAccess>]
 module Cart =
     let zero id =
@@ -13,29 +20,34 @@ module Cart =
     let persist event conn =
         match event with
         | CartCreated cartId ->
-            match Cart.create cartId conn with
-            | Ok _ -> Ok(sprintf "Cart Created: %A" cartId)
-            | Error e -> Error(sprintf "Could not create cart: %A" e)
+            Cart.create cartId conn
+            |> formatResult
+                (sprintf "Cart Created: %A" cartId)
+                "Create Cart Error"
 
         | ItemAddedToCart item ->
-            match Cart.addItemToCart item.CartId item.Data.Sku conn with
-            | Ok _ -> Ok(sprintf "Added %A to cart %A" item.Data.Sku item.CartId)
-            | Error e -> Error(sprintf "Item Add Error: %A" e)
+            Cart.addItemToCart item.CartId item.Data.Sku conn
+            |> formatResult
+                (sprintf "Added %A to cart %A" item.Data.Sku item.CartId)
+                "Item Add Error"
 
         | ItemRemovedFromCart item ->
-            match Cart.removeItemFromCart item.CartId item.Data.Sku conn with
-            | Ok _ -> Ok(sprintf "Removed %A from cart: %A" item.Data.Sku item.CartId)
-            | Error e -> Error(sprintf "Item Remove Error: %A" e)
+            Cart.removeItemFromCart item.CartId item.Data.Sku conn
+            |> formatResult
+                (sprintf "Removed %A from cart: %A" item.Data.Sku item.CartId)
+                "Item Remove Error"
 
         | CheckedOut cartId ->
-            match Cart.checkout cartId conn with
-            | Ok _ -> Ok(sprintf "Checked out %A" cartId)
-            | Error e -> Error(sprintf "Checkout Error: %A" e)
+            Cart.checkout cartId conn
+            |> formatResult
+                (sprintf "Checked out %A" cartId)
+                "Checkout Error"
 
         | ShippedOrder cartId ->
-            match Cart.shipped cartId conn with
-            | Ok _ -> Ok(sprintf "Shipped %A" cartId)
-            | Error e -> Error(sprintf "Shipping Error: %A" e)
+            Cart.shipped cartId conn
+            |> formatResult
+                (sprintf "Shipped %A" cartId)
+                "Shipping Error"
 
     // Read initial DB state -> Hydrate
     let hydrate (id: int) conn =
