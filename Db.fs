@@ -13,19 +13,17 @@ module Connection =
 
 type DbError = DbError of string
 
-let trap (action: unit -> 'a) =
-    try
-        Ok(action ())
-    with e -> Error(DbError e.Message)
+let trap f x = try f x |> Ok with e -> e.Message |> DbError |> Error
+let trap2 f x y = try f x y |> Ok with e -> e.Message |> DbError |> Error
 
-let query<'Result> (connection: SqliteConnection) (query: string) =
-    trap (fun () -> connection.Query<'Result>(query))
+let query<'Result> (connection: SqliteConnection) =
+    trap <| fun (query: string) -> connection.Query<'Result>(query)
 
-let queryP<'Result> (connection: SqliteConnection) (query: string) (param: obj) =
-    trap (fun () -> connection.Query<'Result>(query, param))
+let queryP<'Result> (connection: SqliteConnection) =
+    trap2 <| fun query param -> connection.Query<'Result>(query, param)
 
-let queryFirst<'Result> (connection: SqliteConnection) (query: string) =
-    trap (fun () -> connection.QueryFirst<'Result>(query))
+let queryFirst<'Result> (connection: SqliteConnection) =
+    trap <| fun (query: string) -> connection.QueryFirst<'Result>(query)
 
-let queryFirstP<'Result> (connection: SqliteConnection) (query: string) (param: obj) =
-    trap (fun () -> connection.QueryFirst<'Result>(query, param))
+let queryFirstP<'Result> (connection: SqliteConnection) =
+    trap2 <| fun query param -> connection.QueryFirst<'Result>(query, param)
