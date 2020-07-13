@@ -3,52 +3,63 @@ open Sketch.Persistence
 open Sketch.Aggregate
 open Sketch.Events.Cart
 open Sketch.Commands
+open Microsoft.Data.Sqlite
 
 // Prevent this is client input from the browser
 let fancyHat = { Sku = "123"; Name = "Fancy Hat"; Price = 999.0M }
 let uglyHat = { Sku = "456"; Name = "Ugly Hat"; Price = 1.0M }
 
-let setup =
+let setup () =
     try
         let conn = Connection.mkOnDisk() 
         conn.Open()
+        printfn "... Connected!"
         Ok <| conn.BeginTransaction()
     with
     | e -> Error e
 
-[<EntryPoint>]
-let main argv =
-    match setup with
+let execute (work: SqliteConnection -> Result<'a, 'b>) =
+    match setup() with
     | Error exn -> printfn "! Failed to connect to DB: %A" exn.Message
     | Ok txn -> 
         let conn = txn.Connection
-        let myCartId = 123
-        let cart = Cart.Client conn
-
-        let state = 
-            Cart.hydrate myCartId conn |> Ok
-            |> Result.bind(cart.CreateCart myCartId)
-            |> Result.bind(cart.AddItemToCart myCartId fancyHat)
-            |> Result.bind(cart.AddItemToCart myCartId uglyHat)
-            |> Result.bind(cart.RemoveItemFromCart myCartId fancyHat)
-            |> Result.bind(cart.CheckOut myCartId)
-            |> Result.bind(cart.Shipped myCartId)
+        let result = work conn
 
         printfn "\n----\n"
 
-        match state with
-        | Ok s -> 
-            printfn "Ok, state =\n\n %A" s
-            txn.Commit()
-        | Error s -> 
-            printfn "Rejected, error =\n\n %A" s
-            txn.Rollback()
-
-        printfn "\n----\n"
-
-        printfn "Loaded again, cart =\n\n %A" (Cart.hydrate myCartId conn)
+        match result with
+        | Ok _ -> txn.Commit()
+        | Error _ -> txn.Rollback()
 
         conn.Close()
+
+[<EntryPoint>]
+let main argv =
+    let simulateJourney cartId conn =
+        let cart = Cart.Client conn
+
+        let res = 
+            Cart.hydrate cartId conn |> Ok
+            |> Result.bind(cart.CreateCart cartId)
+            |> Result.bind(cart.AddItemToCart cartId fancyHat)
+            |> Result.bind(cart.AddItemToCart cartId uglyHat)
+            |> Result.bind(cart.RemoveItemFromCart cartId fancyHat)
+            |> Result.bind(cart.CheckOut cartId)
+            |> Result.bind(cart.Shipped cartId)
+        
+        match res with
+        | Ok s -> 
+            printfn "Ok, state =\n\n %A" s
+        | Error s -> 
+            printfn "Rejected, error =\n\n %A" s
+
+        res
+
+    let loadCart cartId conn =
+        Ok <| printfn "Loaded again, cart =\n\n %A" (Cart.hydrate cartId conn)
+
+    execute <| simulateJourney 123
+    execute <| loadCart 123
 
     printfn "Bye!"
     0 // return an integer exit code
