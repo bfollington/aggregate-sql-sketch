@@ -36,16 +36,18 @@ let execute (work: SqliteConnection -> Result<'a, 'b>) =
 [<EntryPoint>]
 let main argv =
     let simulateJourney cartId conn =
+        let (>>=) m f = m |> Result.bind f
+        
         let cart = Cart.Client conn
 
         let res = 
             Cart.hydrate cartId conn |> Ok
-            |> Result.bind(cart.CreateCart cartId)
-            |> Result.bind(cart.AddItemToCart cartId fancyHat)
-            |> Result.bind(cart.AddItemToCart cartId uglyHat)
-            |> Result.bind(cart.RemoveItemFromCart cartId fancyHat)
-            |> Result.bind(cart.CheckOut cartId)
-            |> Result.bind(cart.Shipped cartId)
+            >>= cart.CreateCart cartId
+            >>= cart.AddItemToCart cartId fancyHat
+            >>= cart.AddItemToCart cartId uglyHat
+            >>= cart.RemoveItemFromCart cartId fancyHat
+            >>= cart.CheckOut cartId
+            >>= cart.Shipped cartId
         
         match res with
         | Ok s -> 
