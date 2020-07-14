@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Prelude.fs" />
     <Compile Include="Events.fs" />
     <Compile Include="Db.fs" />
     <Compile Include="Persistence.fs" />

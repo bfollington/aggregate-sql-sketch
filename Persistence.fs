@@ -1,6 +1,7 @@
 namespace Sketch.Persistence
 
 open Sketch.Events.Cart
+open Sketch.Prelude
 open Sketch
 
 [<RequireQualifiedAccess>]
@@ -30,8 +31,8 @@ module Cart =
 
         let mkCart (cart: CartRecord) (items: Product seq) =
             { CustomerCart.Id = cart.Id; Items = items |> Seq.toList; Status = cart.Status }
-
-        cart |> Result.bind(fun c -> items |> Result.map(mkCart c))
+            
+        (cart, items) ||> Result.map2 mkCart
 
 
     let create (id: int) conn = 
